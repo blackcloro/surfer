@@ -1,5 +1,6 @@
 let gameInitialized = false;
 let controlHandlers = null;
+let highScore = 0;
 
 function initGame() {
   let canvas = document.getElementById('gameCanvas');
@@ -40,7 +41,7 @@ function initGame() {
   return { canvas, ctx, cube, laneWidth };
 }
 
-function updateCube(cube, canvas, laneWidth) {
+function updateCube(cube, laneWidth) {
   if (cube.moveLeft && cube.lane > 0) {
     cube.lane--;
     cube.x = cube.lane * laneWidth;
@@ -58,7 +59,7 @@ function drawCube(ctx, cube) {
   ctx.fillStyle = 'blue';
   ctx.fillRect(cube.x, cube.y, cube.width, cube.height);
 }
-function initObstacles(canvas, laneWidth) {
+function initObstacles() {
   return {
     obstacles: [],
     obstacleInterval: 50,
@@ -137,7 +138,7 @@ function checkCollisions(cube, obstacles) {
 function gameLoop() {
   if (!gameInitialized) {
     const { canvas, ctx, cube, laneWidth } = initGame();
-    let obstacleData = initObstacles(canvas, laneWidth);
+    let obstacleData = initObstacles();
     let gameOver = false;
     let animationFrameId;
 
@@ -151,12 +152,18 @@ function gameLoop() {
         ctx.font = "40px Arial";
         ctx.fillText(`Score: ${obstacleData.score}`, canvas.width / 2, canvas.height / 2);
         cancelAnimationFrame(animationFrameId);
+        if (highScore < obstacleData.score) {
+          highScore = obstacleData.score
+        }
         document.addEventListener('touchstart', restartGame, { once: true });
         return;
       }
 
-      updateCube(cube, canvas, laneWidth);
+      updateCube(cube, laneWidth);
       drawCube(ctx, cube);
+
+      ctx.font = "40px Arial";
+      ctx.fillText(`High Score: ${highScore}`, canvas.width / 2, canvas.height / 2);
       animationFrameId = requestAnimationFrame(loop);
     }
 
