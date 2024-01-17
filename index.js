@@ -6,11 +6,17 @@ function initGame() {
   if (!canvas) {
     canvas = document.createElement('canvas');
     canvas.id = 'gameCanvas';
-    canvas.width = 800;
-    canvas.height = 600;
     document.body.appendChild(canvas);
   }
 
+  // Resize canvas to fill browser window dynamically
+  const resizeCanvas = () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    canvas.style.display = 'block'; // Remove scroll bars
+  };
+  window.addEventListener('resize', resizeCanvas, false);
+  resizeCanvas(); // Initialize canvas size
   // Get the drawing context
   const ctx = canvas.getContext('2d');
 
@@ -136,6 +142,8 @@ function gameLoop() {
 
     function loop() {
       if (gameOver) {
+        // Handle touch to restart game when game over
+        document.addEventListener('touchstart', restartGame, { once: true });
         cancelAnimationFrame(animationFrameId);
         ctx.font = "30px Verdana";
         ctx.fillText(`Score: ${obstacleData.score}`, canvas.width / 2, canvas.height / 2);
@@ -207,15 +215,38 @@ function setupControls(cube) {
   const keyDown = keyDownHandler(cube);
   const keyUp = keyUpHandler(cube);
 
-  // Add event listeners
+  // Add keyboard event listeners
   document.addEventListener('keydown', keyDown);
   document.addEventListener('keyup', keyUp);
+
+  // Touch event handlers
+  const handleTouch = (event) => {
+    const touchX = event.touches[0].clientX;
+    const canvasCenter = window.innerWidth / 2;
+
+    if (touchX < canvasCenter) {
+      cube.moveLeft = true;
+    } else {
+      cube.moveRight = true;
+    }
+  };
+
+  const endTouch = () => {
+    cube.moveLeft = false;
+    cube.moveRight = false;
+  };
+
+  // Add touch event listeners
+  document.addEventListener('touchstart', handleTouch);
+  document.addEventListener('touchend', endTouch);
 
   // Provide a way to remove these specific listeners later
   return {
     remove: function () {
       document.removeEventListener('keydown', keyDown);
       document.removeEventListener('keyup', keyUp);
+      document.removeEventListener('touchstart', handleTouch);
+      document.removeEventListener('touchend', endTouch);
     }
   };
 }
