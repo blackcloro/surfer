@@ -133,6 +133,7 @@ function checkCollisions(cube, obstacles) {
   });
 }
 
+
 function gameLoop() {
   if (!gameInitialized) {
     const { canvas, ctx, cube, laneWidth } = initGame();
@@ -141,15 +142,6 @@ function gameLoop() {
     let animationFrameId;
 
     function loop() {
-      if (gameOver) {
-        // Handle touch to restart game when game over
-        document.addEventListener('touchstart', restartGame, { once: true });
-        cancelAnimationFrame(animationFrameId);
-        ctx.font = "30px Verdana";
-        ctx.fillText(`Score: ${obstacleData.score}`, canvas.width / 2, canvas.height / 2);
-        return;
-      }
-
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       obstacleData = updateObstacles(obstacleData, canvas, laneWidth);
       drawObstacles(ctx, obstacleData.obstacles);
@@ -157,12 +149,15 @@ function gameLoop() {
       if (checkCollisions(cube, obstacleData.obstacles)) {
         gameOver = true;
         ctx.font = "40px Arial";
-        ctx.fillText(`score: ${obstacleData.score}`, canvas.width / 2, canvas.height / 2);
-      } else {
-        updateCube(cube, canvas, laneWidth);
-        drawCube(ctx, cube);
-        animationFrameId = requestAnimationFrame(loop);
+        ctx.fillText(`Score: ${obstacleData.score}`, canvas.width / 2, canvas.height / 2);
+        cancelAnimationFrame(animationFrameId);
+        document.addEventListener('touchstart', restartGame, { once: true });
+        return;
       }
+
+      updateCube(cube, canvas, laneWidth);
+      drawCube(ctx, cube);
+      animationFrameId = requestAnimationFrame(loop);
     }
 
     if (!controlHandlers) {
@@ -173,8 +168,8 @@ function gameLoop() {
     gameInitialized = true;
   }
 }
-
 function restartGame() {
+  document.removeEventListener('touchstart', restartGame); // Clean up touch event listener
   gameInitialized = false;
   controlHandlers.remove();
   controlHandlers = null;
