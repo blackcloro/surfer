@@ -1,6 +1,20 @@
 let gameInitialized = false;
 let controlHandlers = null;
 let highScore = 0;
+let instructionsShown = false; // New flag to track if instructions were shown
+function isMobileDevice() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+function showInstructions(ctx, canvas, isMobile) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = 'black';
+  ctx.font = "30px Arial";
+  let instructions = isMobile ?
+    "Move by tapping on the left or right side of the screen. Tap here to start." :
+    "Move using the left and right arrow keys. Click here to start.";
+  ctx.fillText(instructions, canvas.width / 4, canvas.height / 2);
+}
 
 function initGame() {
   let canvas = document.getElementById('gameCanvas');
@@ -24,7 +38,7 @@ function initGame() {
   // Setting up lanes
   const laneWidth = canvas.width / 3;
   const cubeWidth = laneWidth;
-  const cubeHeight = 20;
+  const cubeHeight = 80;
 
   // Cube properties - starting in the middle lane
   const cube = {
@@ -55,9 +69,14 @@ function updateCube(cube, laneWidth) {
   }
 }
 
-function drawCube(ctx, cube) {
+function drawCube(ctx, cube, laneWidth) {
+  ctx.beginPath(); // Start a new path
+  ctx.moveTo(cube.x + laneWidth / 2, cube.y); // Move to the top middle of the lane
+  ctx.lineTo(cube.x, cube.y + cube.height); // Draw line to bottom left
+  ctx.lineTo(cube.x + laneWidth, cube.y + cube.height); // Draw line to bottom right
+  ctx.closePath(); // Close the path
   ctx.fillStyle = 'blue';
-  ctx.fillRect(cube.x, cube.y, cube.width, cube.height);
+  ctx.fill(); // Fill the triangle
 }
 function initObstacles() {
   return {
@@ -134,47 +153,71 @@ function checkCollisions(cube, obstacles) {
   });
 }
 
+function startGame() {
+  let obstacleData = initObstacles();
+  let gameOver = false;
+  let animationFrameId;
+
+  function loop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    obstacleData = updateObstacles(obstacleData, canvas, laneWidth);
+    drawObstacles(ctx, obstacleData.obstacles);
+
+    if (checkCollisions(cube, obstacleData.obstacles)) {
+      gameOver = true;
+      ctx.font = "40px Arial";
+      ctx.fillText(`Score: ${obstacleData.score}`, canvas.width / 2, canvas.height / 2);
+      cancelAnimationFrame(animationFrameId);
+      if (highScore < obstacleData.score) {
+        highScore = obstacleData.score
+      }
+      document.addEventListener('touchstart', restartGame, { once: true });
+      return;
+    }
+
+    updateCube(cube, laneWidth);
+    drawCube(ctx, cube, laneWidth);
+
+    ctx.font = "40px Arial";
+    ctx.fillText(`High Score: ${highScore}`, canvas.width / 2, canvas.height / 2);
+    animationFrameId = requestAnimationFrame(loop);
+  }
+
+  const { canvas, ctx, cube, laneWidth } = initGame();
+  let isMobile = isMobileDevice();
+
+  if (!controlHandlers) {
+    controlHandlers = setupControls(cube, isMobile);
+  }
+
+  loop();
+  gameInitialized = true;
+}
 
 function gameLoop() {
   if (!gameInitialized) {
     const { canvas, ctx, cube, laneWidth } = initGame();
-    let obstacleData = initObstacles();
-    let gameOver = false;
-    let animationFrameId;
+    let isMobile = isMobileDevice();
+    if (!instructionsShown) {
+      // Show instructions only if they haven't been shown before
+      showInstructions(ctx, canvas, isMobile);
 
-    function loop() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      obstacleData = updateObstacles(obstacleData, canvas, laneWidth);
-      drawObstacles(ctx, obstacleData.obstacles);
+      const startEventHandler = () => {
+        canvas.removeEventListener('click', startEventHandler);
+        canvas.removeEventListener('touchstart', startEventHandler);
+        instructionsShown = true; // Set flag to true after showing instructions
+        startGame();
+      };
 
-      if (checkCollisions(cube, obstacleData.obstacles)) {
-        gameOver = true;
-        ctx.font = "40px Arial";
-        ctx.fillText(`Score: ${obstacleData.score}`, canvas.width / 2, canvas.height / 2);
-        cancelAnimationFrame(animationFrameId);
-        if (highScore < obstacleData.score) {
-          highScore = obstacleData.score
-        }
-        document.addEventListener('touchstart', restartGame, { once: true });
-        return;
-      }
-
-      updateCube(cube, laneWidth);
-      drawCube(ctx, cube);
-
-      ctx.font = "40px Arial";
-      ctx.fillText(`High Score: ${highScore}`, canvas.width / 2, canvas.height / 2);
-      animationFrameId = requestAnimationFrame(loop);
+      canvas.addEventListener('click', startEventHandler);
+      canvas.addEventListener('touchstart', startEventHandler);
+    } else {
+      // Start the game immediately if instructions were shown before
+      startGame();
     }
-
-    if (!controlHandlers) {
-      controlHandlers = setupControls(cube);
-    }
-
-    loop();
-    gameInitialized = true;
   }
 }
+
 function restartGame() {
   document.removeEventListener('touchstart', restartGame); // Clean up touch event listener
   gameInitialized = false;
